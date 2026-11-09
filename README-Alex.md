@@ -60,7 +60,4 @@ I also tested the original website and made changes to improve how the lectures 
 The DNS, Apache security, and backup portions are being worked on separately by the other group members.
 
 ## Notes
-
-The lecture PDFs are included in our private GitHub repository with permission.
-
 AI assistance was used for coding guidance and troubleshooting throughout development.
