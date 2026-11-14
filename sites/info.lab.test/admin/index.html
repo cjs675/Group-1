@@ -1,0 +1,55 @@
+<!DOCTYPE html> 
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Admin Portal | info.lab.test</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Administrative Control Panel <span class="badge">Restrictied</span><h1>
+        <p>Authenticated session verified via Apache HTTP Basic Authentication.</p> 
+    </header>
+
+    <div class="card">
+        <h2>Internal Infrastructure Roster</h2>
+        <table>
+            <tr>
+                <th>Hostname</th>
+                <th>IP Address</th>
+                <th>Role / Ports</th>
+            </tr>
+            <tr>
+                <td><code>rhel-server.lab.test</code></td>
+                <td><code>192.168.56.10</code></td>
+                <td>BIND DNS (53), Apache HTTPD (80, 443)</td>
+            </tr>
+            <tr>
+                <td><code>info.lab.test</code></td>
+                <td><code>192.168.56.10</code></td>
+                <td>Static Informational Portal + Admin Area</td>
+            </tr>
+            <tr>
+                <td><code>rhel-client.lab.test</code></td>
+                <td><code>192.168.56.20</code></td>
+                <td>Dynamic PHP/CSV Application</td>
+            </tr>
+            <tr>
+                <td><code>rhel-client.lab.test</code></td>
+                <td><code>192.168.56.20</code></td>
+                <td>Client Verification Node</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>System Configuration &amp; Log Paths</h2>
+        <ul>
+            <li><strong>Apache Virtual Host:</strong> <code>/etc/httpd/conf.d/info.lab.test.conf</code></li>
+            <li><strong>Access / Error Logs:</strong> <code>/var/log/httpd/info.lab.test.conf-*.log</code></li>
+            <li><strong>TLS Certificate:</strong> <code>/etc/pki/tls/certs/lab.test.crt</code></li>
+        </ul>
+    </div>
+</body>
+</html>
