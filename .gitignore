@@ -1,0 +1,11 @@
+# OS & editor files 
+.DS_Store
+*.swp
+
+# Project secrets 
+*.key
+*htpasswd*
+
+# Logs and backups 
+*.log
+*.tar.gz
