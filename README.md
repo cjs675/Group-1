@@ -67,4 +67,30 @@ flowchart LR
 ---
 
 
+## 2. Key Technical Decisions
 
+* **Dual-NIC Network Isolation:** Each VM uses a NAT adapter (`enp0s1`) strictly for `dnf` package installation and a Host-Only/Internal adapter (`enp0s2`) configured on `192.168.56.0/24` for all lab service traffic.
+* **Authoritative Split-Zone DNS (BIND):** Instead of relying on static `/etc/hosts` overrides on the client, `rhel-server` runs BIND (`named`) with both a forward zone (`lab.test`) and reverse zone (`56.168.192.in-addr.arpa`) so all hostnames and VirtualHosts resolve dynamically over port 53.
+* **Name-Based VirtualHosting & Mandatory TLS:** Both `info.lab.test` and `app.lab.test` share `192.168.56.10`. Port `80` VirtualHosts issue strict `301 Moved Permanently` redirects to port `443` (`mod_ssl`), preventing plaintext exposure of HTTP Basic Auth credentials on `/admin`.
+* **Out-of-Root Lecture Metadata Index:** The CSV catalog (`/var/www/lecture-index/lectures.csv`) used by `app.lab.test` is stored outside the public `DocumentRoot` (`/var/www/app.lab.test/html`) so users can search metadata via PHP without directly downloading the raw database file.
+* **SELinux Enforcing & Least-Privilege Permissions:** SELinux remains in `Enforcing` mode at all times. Custom directories use persistent `httpd_sys_content_t` file contexts (`semanage fcontext` + `restorecon`), directories require `755` (`drwxr-xr-x`) traversal permissions so PHP `is_file()` checks succeed on `/slides`, and regular files use `644` (`-rw-r--r--`).
+
+--- 
+
+
+## 3. Required Packages & Tools
+
+Before deploying the configurations on **`rhel-server`** (`192.168.56.10`), install the required server daemons and SELinux management utilities:
+
+```bash
+sudo dnf install -y httpd mod_ssl php php-fpm php-cli \
+    bind bind-utils firewalld policycoreutils-python-utils tar curl
+```
+
+On **`rhel-client`** (`192.168.56.20`), ensure validation tools are installed:
+
+```bash
+sudo dnf install -y bind-utils curl firefox openssh-clients
+```
+
+---
