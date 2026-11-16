@@ -188,4 +188,29 @@ curl -k -I -u admin --resolve info.lab.test:443:192.168.56.10 https://info.lab.t
 curl -k --resolve app.lab.test:443:192.168.56.10 "https://app.lab.test/?search=Linux" | grep "Available Lectures"
 ```
 
+--- 
+
+
+## 6. Backup & Disaster Recovery Procedure
+
+We maintain compressed, permission-preserving (`-p`) archives of all web roots, lecture metadata, and Apache configurations under `/var/backups/web-project/`.
+
+### Create a Full Backup Archive
+```bash
+sudo mkdir -p /var/backups/web-project
+
+sudo tar -czpvf /var/backups/web-project/web-backup-$(date +%F).tar.gz \
+    /var/www/info.lab.test \
+    /var/www/app.lab.test \
+    /var/www/lecture-index \
+    /etc/httpd/conf.d/
+```
+
+### Restore from Backup & Re-Verify SELinux Labels
+```bash
+sudo tar -xzpvf /var/backups/web-project/web-backup-*.tar.gz -C /
+sudo restorecon -Rv /etc/httpd/conf.d /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index
+sudo httpd -t && sudo systemctl reload httpd
+```
+
 ---
