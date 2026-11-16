@@ -120,17 +120,22 @@ flowchart LR
 --- 
 
 
-### Step 3: Create Web Directories & Copy Site Assets (`rhel-server`)
-```bash
-sudo mkdir -p /var/www/info.lab.test/html/admin
-sudo mkdir -p /var/www/app.lab.test/html/slides
-sudo mkdir -p /var/www/lecture-index
+## 3. Required Packages & Tools
 
-# Copy static portal, dynamic PHP hub, lecture PDFs, and CSV index
-sudo cp -r sites/info.lab.test/* /var/www/info.lab.test/html/
-sudo cp -r sites/app.lab.test/* /var/www/app.lab.test/html/
-sudo cp sites/app.lab.test/lectures.csv /var/www/lecture-index/ 2>/dev/null || true
+Before deploying the configurations on **`rhel-server`** (`192.168.56.10`), install the required server daemons and SELinux management utilities (note: the `bind` package installs the `named` service):
+
+```bash
+sudo dnf install -y httpd mod_ssl php php-fpm php-cli \
+    bind bind-utils firewalld policycoreutils-python-utils tar curl
 ```
+
+On **`rhel-client`** (`192.168.56.20`), ensure validation tools are installed:
+
+```bash
+sudo dnf install -y bind-utils curl firefox openssh-clients
+```
+
+---
 
 ## 4. Server Setup & Deployment (`rhel-server`)
 
