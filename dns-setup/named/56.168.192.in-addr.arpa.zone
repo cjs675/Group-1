@@ -1,0 +1,14 @@
+$TTL 86400
+@   IN  SOA rhel-server.lab.test. admin.lab.test. (
+		2026110901	; Serial
+		3600		; Refresh
+		1800		; Retry
+		604800		; Expire
+		86400 )		; MInimum TTL
+
+; Name server
+@	IN NS 	rhel-server.lab.test.
+
+; PTR records (last octet only)
+10	IN PTR rhel-server.lab.test.
+20	IN PTR rhel-client.lab.test
