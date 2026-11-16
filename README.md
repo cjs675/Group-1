@@ -130,7 +130,7 @@ sudo mkdir -p /var/www/lecture-index
 sudo cp -r sites/info.lab.test/* /var/www/info.lab.test/html/
 sudo cp -r sites/app.lab.test/* /var/www/app.lab.test/html/
 sudo cp sites/app.lab.test/lectures.csv /var/www/lecture-index/ 2>/dev/null || true
-
+```
 
 ## 4. Server Setup & Deployment (`rhel-server`)
 
@@ -177,17 +177,11 @@ sudo mkdir -p /var/www/info.lab.test/html/admin
 sudo mkdir -p /var/www/app.lab.test/html/slides
 sudo mkdir -p /var/www/lecture-index
 
-### Step 3: Create Web Directories & Copy Site Assets (`rhel-server`)
-```bash
-sudo mkdir -p /var/www/info.lab.test/html/admin
-sudo mkdir -p /var/www/app.lab.test/html/slides
-sudo mkdir -p /var/www/lecture-index
-
 # Copy static portal, dynamic PHP hub, lecture PDFs, and CSV index
 sudo cp -r sites/info.lab.test/* /var/www/info.lab.test/html/
 sudo cp -r sites/app.lab.test/* /var/www/app.lab.test/html/
 sudo cp sites/app.lab.test/lectures.csv /var/www/lecture-index/ 2>/dev/null || true 
-
+```
 ### Step 4: Generate TLS Certificates & Basic Auth Credentials (`rhel-server`) 
 ```bash
 # Generate self-signed certificates for info.lab.test and app.lab.test
