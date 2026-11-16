@@ -3,7 +3,6 @@
 This repository contains the configuration files, web application source code, lecture metadata index, and deployment runbook for our **COP 3350 (Systems Administration)** group project. The infrastructure deploys an authoritative BIND DNS service and a hardened, multi-tenant Apache (`httpd`) + PHP-FPM web tier across two Red Hat Enterprise Linux 9 (RHEL 9) virtual machines on an isolated `192.168.56.0/24` subnet.
 
 ---
-
 ## Architecture Overview
 
 | Hostname | Role | Private IP (`enp0s2` / `private-net`) | Active Services |
@@ -38,14 +37,6 @@ Group-1/
 │   └── app.lab.test/
 └── README.md
 ```
----
-
-## DNS Zone Configuration (`lab.test`)
-
-* **Forward Zone (`/var/named/lab.test.zone`):** Defines `NS` record `rhel-server.lab.test.` and `A` records mapping `rhel-server`, `info`, `app`, `resources`, and `admin` to `192.168.56.10`, plus `rhel-client` to `192.168.56.20`.
-* **Reverse Zone (`/var/named/56.168.192.in-addr.arpa.zone`):** Defines `PTR` records mapping host octet `10` to `rhel-server.lab.test.` and octet `20` to `rhel-client.lab.test.`.
-* **Zone Include (`/etc/named/coursehub-zones.conf`):** Declares master zones for `lab.test` and `56.168.192.in-addr.arpa` with `allow-update { none; };`, included by `/etc/named.conf`.
-
 ---
 
 ## 1. Network Architecture & Host Overview
@@ -100,6 +91,13 @@ flowchart LR
     style SEC fill:#E2E8F0,stroke:#475569,stroke-width:1.2px,color:#0F172A
 ``` 
 
+### DNS Zone Architecture (`lab.test`)
+* **Primary Configuration (`/etc/named.conf`):** Listens on port `53` (`127.0.0.1;` and `192.168.56.10;`), restricts recursive queries to `localhost;` and `192.168.56.0/24;`, and includes `/etc/named/coursehub-zones.conf`.
+* **Zone Declarations (`/etc/named/coursehub-zones.conf`):** Declares master zones for `lab.test` and `56.168.192.in-addr.arpa` with `allow-update { none; };`.
+* **Forward Zone (`/var/named/lab.test.zone`):** Defines `NS` record `rhel-server.lab.test.` and `A` records mapping `rhel-server`, `info`, `app`, `resources`, and `admin` to `192.168.56.10`, plus `rhel-client` to `192.168.56.20`.
+* **Reverse Zone (`/var/named/56.168.192.in-addr.arpa.zone`):** Defines `PTR` records mapping host octet `10` to `rhel-server.lab.test.` and octet `20` to `rhel-client.lab.test.`.
+
+--- 
 
 | Hostname / VirtualHost | IP Address | Role & Services | Key Paths |
 | :--- | :--- | :--- | :--- |
@@ -140,14 +138,15 @@ sudo dnf install -y bind-utils curl firefox openssh-clients
 --- 
 
 
-## 4. Server Setup & Deployment `rhel-server`
+## 4. Server Setup & Deployment (`rhel-server`)
 
-If you are pulling this repository onto a fresh VM to replicate or test the environment, run the steps below from the root of the `Group-1` repository.
+Run Steps 1-6 on **`rhel-server`* (`192.168.56.10`) from the root of the `Group-1` repository, and Step 7 on **`rhel-client`** (`192.168.56.20`).
 
 ### Step 1: Enable Core Services & Configure `firewalld`
 ```bash
-sudo systemctl enable --now firewalld httpd php-fpm sshd
+sudo systemctl enable --now firewalld httpd named  php-fpm sshd
 
+sudo firewall-cmd --permanent --add-service=dns
 sudo firewall-cmd --permanent --add-service=http
 sudo firewall-cmd --permanent --add-service=https
 sudo firewall-cmd --permanent --add-service=dns
@@ -156,19 +155,41 @@ sudo firewall-cmd --reload
 sudo firewall-cmd --list-all
 ```
 
-### Step 2: Create Web Directories & Copy Site Assets
+### Step 2: Deploy Authoritative BIND 9 DNS (`rhel-server`)
+```bash
+# Copy main config, zone declarations and forward/reverse zone files  
+sudo cp dns-setup/named.conf /etc/named.conf
+sudo cp dns-setup/named/coursehub-zones.conf /etc/named/coursehub-zones.conf
+sudo cp dns-setup/named/lab.test.zone /var/named/lab.test.zone
+sudo cp dns-setup/named/56.168.192.in-addr.arpa.zone /var/named/56.168.192.in-addr.arpa.zone
+
+# Enforce root:named ownership, 640 permissions, and SELinux contexts 
+sudo chown root:named /etc/named.conf /etc/named/coursehub-zones.conf \
+    /var/named/lab.test.zone /var/named/56.168.192.in-addr.arpa.zone
+sudo chmod 640 /etc/named.conf /etc/named/coursehub-zones.conf \
+    /var/named/lab.test.zone /var/named/56.168.192.in-addr.arpa.zone
+sudo restorecon -Rv /etc/named* /var/named
+
+# Validate BIND configuration and zone syntax, then reload named
+sudo named-checkconf /etc/named.conf
+sudo named-checkzone lab.test /var/named/lab.test.zone
+sudo named-checkzone 56.168.192.in-addr.arpa /var/named/56.168.192.in-addr.arpa.zone
+sudo systemctl restart named
+``` 
+
+
+### Step 3: Create Web Directories & Copy Site Assets (`rhel-server`) 
 ```bash
 sudo mkdir -p /var/www/info.lab.test/html/admin
 sudo mkdir -p /var/www/app.lab.test/html/slides
 sudo mkdir -p /var/www/lecture-index
 
-# Copy static portal, dynamic PHP hub, and lecture index from repo
-sudo cp -r info.lab.test/* /var/www/info.lab.test/html/
-sudo cp -r app.lab.test/* /var/www/app.lab.test/html/
-sudo cp lecture-index/lectures.csv /var/www/lecture-index/
-``` 
-
-### Step 3: Generate TLS Certificates & Basic Auth Credentials
+# Copy static portal, dynamic PHP hub, lecture PDFs, and CSV index
+sudo cp -r sites/info.lab.test/* /var/www/info.lab.test/html/
+sudo cp -r sites/app.lab.test/* /var/www/app.lab.test/html/
+sudo cp /var/www/lecture-index/lectures.csv /var/www/lecture-index/ 2>/dev/null || true
+```
+### Step 4: Generate TLS Certificates & Basic Auth Credentials (`rhel-server`) 
 ```bash
 # Generate self-signed certificates for info.lab.test and app.lab.test
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -187,13 +208,13 @@ sudo chown root:apache /etc/httpd/conf/.htpasswd
 sudo chmod 640 /etc/httpd/conf/.htpasswd
 ```
 
-### Step 4: Deploy Apache VirtualHost Configs
+### Step 5: Deploy Apache VirtualHost Configs (`rhel-server`) 
 ```bash
 sudo cp apache/*.conf /etc/httpd/conf.d/
 echo "ServerName rhel-server.lab.test" | sudo tee /etc/httpd/conf.d/servername.conf
 ```
 
-### Step 5: Enforce Ownership, Permissions & SELinux Contexts
+### Step 6: Enforce Ownership, Permissions & SELinux Contexts (`rhel-server`) 
 > **Important:** Directories (`html`, `slides`, `admin`, `lecture-index`) **must** keep `755` (`+x`) permissions so Apache and PHP-FPM can traverse them and stat PDF files.
 
 ```bash
@@ -210,51 +231,59 @@ sudo restorecon -Rv /var/www/info.lab.test /var/www/app.lab.test /var/www/lectur
 sudo httpd -t && sudo systemctl restart php-fpm httpd 
 ```
 
-## 5. Verification Commands (`rhel-client`)
+## 7. Verification Commands (`rhel-client`)
 
-Run these checks from **`rhel-client`** (`192.168.56.20`) (or locally on `rhel-server` by replacing `192.168.56.10` with `127.0.0.1` in `--resolve` before DNS is live):
+Run all checks from **`rhel-client`** ('192.168.56.20') without `/etc/hosts/` overrides or `--resolve` flags: 
 
-```bash
-# 1. Verify DNS forward & reverse resolution (once BIND is active)
-dig @192.168.56.10 info.lab.test +short
-dig @192.168.56.10 app.lab.test +short
-dig @192.168.56.10 -x 192.168.56.10 +short
+```bash 
+#1. Verify Forward (A) & Reverse (PTR) DNS Resolution via 192.168.56.10
+dig info.lab.test 
+dig app.lab.test 
+dig -x 192.168.56.10 +short
+dig -x 192.168.56.20 +short
 
 # 2. Verify Port 80 -> 443 (301 Moved Permanently) Redirects
-curl -I --resolve info.lab.test:80:192.168.56.10 http://info.lab.test/
-curl -I --resolve app.lab.test:80:192.168.56.10 http://app.lab.test/
+curl -I [http://info.lab.test/](http://info.lab.test/)
+curl -I [https://app.lab.test/](https://app.lab.test/)
 
 # 3. Verify Unauthorized (401) vs. Authorized (200) Access on /admin
-curl -k -I --resolve info.lab.test:443:192.168.56.10 https://info.lab.test/admin/
-curl -k -I -u admin --resolve info.lab.test:443:192.168.56.10 https://info.lab.test/admin/
+curl -k -I  [https://info.lab.test/admin](https://info.lab.test/admin/)
+curl -k -I -u admin [https://info.lab.test/admin](https://info.lab.test/admin/)
 
-# 4. Verify Dynamic PHP Search on app.lab.test
-curl -k --resolve app.lab.test:443:192.168.56.10 "https://app.lab.test/?search=Linux" | grep "Available Lectures"
+# 4. Verify Dynamic PHP Search on app.lab.test 
+curl -k "[https://app.lab.test/?search=Linux](https://app.lab.test/?search=Linux)" | grep -E "Available Lectures|Lecture 01"
+curl -k -I [https://app.lab.test/slides/L01.pdf](https://app.lab.test/slides/L01.pdf)
 ```
 
 --- 
 
 
-## 6. Backup & Disaster Recovery Procedure
+## 8. Backup & Disaster Recovery Procedure
 
 We maintain compressed, permission-preserving (`-p`) archives of all web roots, lecture metadata, and Apache configurations under `/var/backups/web-project/`.
 
-### Create a Full Backup Archive
+### Create a Full Backup Archive (`rhel-server`)
 ```bash
 sudo mkdir -p /var/backups/web-project
 
-sudo tar -czpvf /var/backups/web-project/web-backup-$(date +%F).tar.gz \
+sudo tar -czpvf /var/backups/web-project/web-dns-backup-$(date +%F).tar.gz \
     /var/www/info.lab.test \
     /var/www/app.lab.test \
     /var/www/lecture-index \
-    /etc/httpd/conf.d/
-```
+    /etc/httpd/conf.d/ \
+    /etc/named.conf \
+    /etc/named/coursehub-zones.conf \
+    /var/named/lab.test.zone \
+    /var/named/56.168.192.in-addr.arpa.zone
+``` 
 
 ### Restore from Backup & Re-Verify SELinux Labels
 ```bash
-sudo tar -xzpvf /var/backups/web-project/web-backup-*.tar.gz -C /
-sudo restorecon -Rv /etc/httpd/conf.d /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index
-sudo httpd -t && sudo systemctl reload httpd
+sudo tar -xzpvf /var/backups/web-project/web-dns-backup-*.tar.gz -C /
+sudo restorecon -Rv /etc/httpd/conf.d /var/www/info.lab.test /var/www/app.lab.test \
+    /var/www/lecture-index /etc/named* /var/named
+sudo named-checkconf /etc/named.conf && sudo httpd -t
+sudo systemctl reload named httpd php-fpm
 ```
 
 ---
