@@ -1,6 +1,50 @@
-# COP 3350 — Multi-Service RHEL 9 Infrastructure (`lab.test`)
+# COP 3350 — RHEL 9 - Web & DNS Infrastructure (`lab.test`)
 
 This repository contains the configuration files, web application source code, lecture metadata index, and deployment runbook for our **COP 3350 (Systems Administration)** group project. The infrastructure deploys an authoritative BIND DNS service and a hardened, multi-tenant Apache (`httpd`) + PHP-FPM web tier across two Red Hat Enterprise Linux 9 (RHEL 9) virtual machines on an isolated `192.168.56.0/24` subnet.
+
+---
+
+## Architecture Overview
+
+| Hostname | Role | Private IP (`enp0s2` / `private-net`) | Active Services |
+| :--- | :--- | :--- | :--- |
+| **`rhel-server.lab.test`** | Authoritative DNS & Web/App Server | `192.168.56.10` | `named`, `httpd`, `php-fpm`, `firewalld` |
+| **`rhel-client.lab.test`** | Test Client & Verification Workstation | `192.168.56.20` | `NetworkManager`, `bind-utils`, `curl`, `firefox` |
+
+### Hosted Services & Endpoints
+* **Authoritative DNS (`lab.test` & `56.168.192.in-addr.arpa`):** Resolves forward (`A`) and reverse (`PTR`) records across `192.168.56.0/24` with recursion restricted to `localhost` and `192.168.56.0/24`.
+* **Static Portal (`https://info.lab.test/`):** Serves course overview content over TLS with HTTP (`:80`) permanently redirecting (`301`) to HTTPS (`:443`) and HTTP Basic Authentication protecting `/admin/`.
+* **Dynamic Resource Hub (`https://app.lab.test/`):** Executes PHP via `php-fpm` to query `/var/www/lecture-index/lectures.csv` and serve searchable lecture metadata and downloadable PDF slides (`/var/www/app.lab.test/html/slides/L01.pdf` – `L21.pdf`)[cite: 5].
+
+---
+
+## Repository Structure
+
+```text
+Group-1/
+├── apache/                     # Apache VirtualHost & global ServerName configs
+│   ├── info.lab.test.conf
+│   ├── app.lab.test.conf
+│   └── servername.conf
+├── dns-setup/                  # Authoritative BIND 9 configuration & zone files
+│   ├── named.conf
+│   ├── Readme.txt
+│   └── named/
+│       ├── coursehub-zones.conf
+│       ├── lab.test.zone
+│       └── 56.168.192.in-addr.arpa.zone
+├── sites/                      # Web root assets and CSV metadata
+│   ├── info.lab.test/
+│   └── app.lab.test/
+└── README.md
+
+---
+
+## DNS Zone Configuration (`lab.test`)
+
+* **Forward Zone (`/var/named/lab.test.zone`):** Defines `NS` record `rhel-server.lab.test.` and `A` records mapping `rhel-server`, `info`, `app`, `resources`, and `admin` to `192.168.56.10`, plus `rhel-client` to `192.168.56.20`.
+* **Reverse Zone (`/var/named/56.168.192.in-addr.arpa.zone`):** Defines `PTR` records mapping host octet `10` to `rhel-server.lab.test.` and octet `20` to `rhel-client.lab.test.`.
+* **Zone Include (`/etc/named/coursehub-zones.conf`):** Declares master zones for `lab.test` and `56.168.192.in-addr.arpa` with `allow-update { none; };`, included by `/etc/named.conf`.
 
 ---
 
