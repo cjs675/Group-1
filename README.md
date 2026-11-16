@@ -120,22 +120,16 @@ flowchart LR
 --- 
 
 
-## 3. Required Packages & Tools
-
-Before deploying the configurations on **`rhel-server`** (`192.168.56.10`), install the required server daemons and SELinux management utilities:
-
+### Step 3: Create Web Directories & Copy Site Assets (`rhel-server`)
 ```bash
-sudo dnf install -y httpd mod_ssl php php-fpm php-cli \
-    bind bind-utils firewalld policycoreutils-python-utils tar curl
-```
+sudo mkdir -p /var/www/info.lab.test/html/admin
+sudo mkdir -p /var/www/app.lab.test/html/slides
+sudo mkdir -p /var/www/lecture-index
 
-On **`rhel-client`** (`192.168.56.20`), ensure validation tools are installed:
-
-```bash
-sudo dnf install -y bind-utils curl firefox openssh-clients
-```
-
---- 
+# Copy static portal, dynamic PHP hub, lecture PDFs, and CSV index
+sudo cp -r sites/info.lab.test/* /var/www/info.lab.test/html/
+sudo cp -r sites/app.lab.test/* /var/www/app.lab.test/html/
+sudo cp sites/app.lab.test/lectures.csv /var/www/lecture-index/ 2>/dev/null || true
 
 
 ## 4. Server Setup & Deployment (`rhel-server`)
@@ -250,24 +244,24 @@ cat /etc/resolv.conf
 
 Run all checks from **`rhel-client`** ('192.168.56.20') without `/etc/hosts/` overrides or `--resolve` flags: 
 
-```bash 
-#1. Verify Forward (A) & Reverse (PTR) DNS Resolution via 192.168.56.10
-dig info.lab.test 
-dig app.lab.test 
+```bash
+# 1. Verify Forward (A) & Reverse (PTR) DNS Resolution via 192.168.56.10
+dig info.lab.test +short
+dig app.lab.test +short
 dig -x 192.168.56.10 +short
 dig -x 192.168.56.20 +short
 
 # 2. Verify Port 80 -> 443 (301 Moved Permanently) Redirects
 curl -I http://info.lab.test/
-curl -I https://app.lab.test/
+curl -I http://app.lab.test/
 
 # 3. Verify Unauthorized (401) vs. Authorized (200) Access on /admin
-curl -k -I  [https://info.lab.test/admin](https://info.lab.test/admin/)
-curl -k -I -u admin [https://info.lab.test/admin](https://info.lab.test/admin/)
+curl -k -I https://info.lab.test/admin/
+curl -k -I -u admin https://info.lab.test/admin/
 
-# 4. Verify Dynamic PHP Search on app.lab.test 
-curl -k "[https://app.lab.test/?search=Linux](https://app.lab.test/?search=Linux)" | grep -E "Available Lectures|Lecture 01"
-curl -k -I [https://app.lab.test/slides/L01.pdf](https://app.lab.test/slides/L01.pdf)
+# 4. Verify Dynamic PHP Search & PDF Slide Delivery on app.lab.test
+curl -k "https://app.lab.test/?search=Linux" | grep -E "Available Lectures|Lecture 01"
+curl -k -I https://app.lab.test/slides/L01.pdf
 ```
 
 --- 
