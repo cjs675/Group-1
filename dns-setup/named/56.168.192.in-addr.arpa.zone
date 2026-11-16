@@ -11,4 +11,4 @@ $TTL 86400
 
 ; PTR records (last octet only)
 10	IN PTR rhel-server.lab.test.
-20	IN PTR rhel-client.lab.test
+20	IN PTR rhel-client.lab.test.
