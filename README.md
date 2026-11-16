@@ -231,7 +231,7 @@ sudo restorecon -Rv /var/www/info.lab.test /var/www/app.lab.test /var/www/lectur
 sudo httpd -t && sudo systemctl restart php-fpm httpd 
 ```
 
-## 7. Verification Commands (`rhel-client`)
+## 5. Verification Commands (`rhel-client`)
 
 Run all checks from **`rhel-client`** ('192.168.56.20') without `/etc/hosts/` overrides or `--resolve` flags: 
 
@@ -258,7 +258,7 @@ curl -k -I [https://app.lab.test/slides/L01.pdf](https://app.lab.test/slides/L01
 --- 
 
 
-## 8. Backup & Disaster Recovery Procedure
+## 6. Backup & Disaster Recovery Procedure
 
 We maintain compressed, permission-preserving (`-p`) archives of all web roots, lecture metadata, and Apache configurations under `/var/backups/web-project/`.
 
