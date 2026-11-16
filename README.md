@@ -93,4 +93,33 @@ On **`rhel-client`** (`192.168.56.20`), ensure validation tools are installed:
 sudo dnf install -y bind-utils curl firefox openssh-clients
 ```
 
----
+--- 
+
+
+## 4. Server Setup & Deployment `rhel-server`
+
+If you are pulling this repository onto a fresh VM to replicate or test the environment, run the steps below from the root of the `Group-1` repository.
+
+### Step 1: Enable Core Services & Configure `firewalld`
+```bash
+sudo systemctl enable --now firewalld httpd php-fpm sshd
+
+sudo firewall-cmd --permanent --add-service=http
+sudo firewall-cmd --permanent --add-service=https
+sudo firewall-cmd --permanent --add-service=dns
+sudo firewall-cmd --permanent --add-service=ssh
+sudo firewall-cmd --reload
+sudo firewall-cmd --list-all
+```
+
+### Step 2: Create Web Directories & Copy Site Assets
+```bash
+sudo mkdir -p /var/www/info.lab.test/html/admin
+sudo mkdir -p /var/www/app.lab.test/html/slides
+sudo mkdir -p /var/www/lecture-index
+
+# Copy static portal, dynamic PHP hub, and lecture index from repo
+sudo cp -r info.lab.test/* /var/www/info.lab.test/html/
+sudo cp -r app.lab.test/* /var/www/app.lab.test/html/
+sudo cp lecture-index/lectures.csv /var/www/lecture-index/
+```
