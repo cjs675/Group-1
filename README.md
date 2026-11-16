@@ -122,4 +122,46 @@ sudo mkdir -p /var/www/lecture-index
 sudo cp -r info.lab.test/* /var/www/info.lab.test/html/
 sudo cp -r app.lab.test/* /var/www/app.lab.test/html/
 sudo cp lecture-index/lectures.csv /var/www/lecture-index/
+``` 
+
+### Step 3: Generate TLS Certificates & Basic Auth Credentials
+```bash
+# Generate self-signed certificates for info.lab.test and app.lab.test
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/pki/tls/private/info.lab.test.key \
+    -out /etc/pki/tls/certs/info.lab.test.crt \
+    -subj "/C=US/ST=FL/L=FortMyers/O=FGCU/OU=COP3350/CN=info.lab.test"
+
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/pki/tls/private/app.lab.test.key \
+    -out /etc/pki/tls/certs/app.lab.test.crt \
+    -subj "/C=US/ST=FL/L=FortMyers/O=FGCU/OU=COP3350/CN=app.lab.test"
+
+# Create HTTP Basic Auth password file for https://info.lab.test/admin
+sudo htpasswd -c /etc/httpd/conf/.htpasswd admin
+sudo chown root:apache /etc/httpd/conf/.htpasswd
+sudo chmod 640 /etc/httpd/conf/.htpasswd
+```
+
+### Step 4: Deploy Apache VirtualHost Configs
+```bash
+sudo cp apache/*.conf /etc/httpd/conf.d/
+echo "ServerName rhel-server.lab.test" | sudo tee /etc/httpd/conf.d/servername.conf
+```
+
+### Step 5: Enforce Ownership, Permissions & SELinux Contexts
+> **Important:** Directories (`html`, `slides`, `admin`, `lecture-index`) **must** keep `755` (`+x`) permissions so Apache and PHP-FPM can traverse them and stat PDF files.
+
+```bash
+sudo chown -R apache:apache /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index
+
+sudo find /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index -type d -exec chmod 755 {} \;
+sudo find /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index -type f -exec chmod 644 {} \;
+
+sudo semanage fcontext -a -t httpd_sys_content_t "/var/www/info\.lab\.test(/.*)?"
+sudo semanage fcontext -a -t httpd_sys_content_t "/var/www/app\.lab\.test(/.*)?"
+sudo semanage fcontext -a -t httpd_sys_content_t "/var/www/lecture-index(/.*)?"
+sudo restorecon -Rv /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index
+
+sudo httpd -t && sudo systemctl restart php-fpm httpd
 ```
