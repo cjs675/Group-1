@@ -13,7 +13,7 @@ This repository contains the configuration files, web application source code, l
 ### Hosted Services & Endpoints
 * **Authoritative DNS (`lab.test` & `56.168.192.in-addr.arpa`):** Resolves forward (`A`) and reverse (`PTR`) records across `192.168.56.0/24` with recursion restricted to `localhost` and `192.168.56.0/24`.
 * **Static Portal (`https://info.lab.test/`):** Serves course overview content over TLS with HTTP (`:80`) permanently redirecting (`301`) to HTTPS (`:443`) and HTTP Basic Authentication protecting `/admin/`.
-* **Dynamic Resource Hub (`https://app.lab.test/`):** Executes PHP via `php-fpm` to query `/var/www/lecture-index/lectures.csv` and serve searchable lecture metadata and downloadable PDF slides (`/var/www/app.lab.test/html/slides/L01.pdf` – `L21.pdf`)[cite: 5].
+* **Dynamic Resource Hub (`https://app.lab.test/`):** Executes PHP via `php-fpm` to query `/var/www/lecture-index/lectures.csv` and serve searchable lecture metadata and downloadable PDF slides 
 
 ---
 
@@ -149,7 +149,6 @@ sudo systemctl enable --now firewalld httpd named  php-fpm sshd
 sudo firewall-cmd --permanent --add-service=dns
 sudo firewall-cmd --permanent --add-service=http
 sudo firewall-cmd --permanent --add-service=https
-sudo firewall-cmd --permanent --add-service=dns
 sudo firewall-cmd --permanent --add-service=ssh
 sudo firewall-cmd --reload
 sudo firewall-cmd --list-all
@@ -184,11 +183,17 @@ sudo mkdir -p /var/www/info.lab.test/html/admin
 sudo mkdir -p /var/www/app.lab.test/html/slides
 sudo mkdir -p /var/www/lecture-index
 
+### Step 3: Create Web Directories & Copy Site Assets (`rhel-server`)
+```bash
+sudo mkdir -p /var/www/info.lab.test/html/admin
+sudo mkdir -p /var/www/app.lab.test/html/slides
+sudo mkdir -p /var/www/lecture-index
+
 # Copy static portal, dynamic PHP hub, lecture PDFs, and CSV index
 sudo cp -r sites/info.lab.test/* /var/www/info.lab.test/html/
 sudo cp -r sites/app.lab.test/* /var/www/app.lab.test/html/
-sudo cp /var/www/lecture-index/lectures.csv /var/www/lecture-index/ 2>/dev/null || true
-```
+sudo cp sites/app.lab.test/lectures.csv /var/www/lecture-index/ 2>/dev/null || true 
+
 ### Step 4: Generate TLS Certificates & Basic Auth Credentials (`rhel-server`) 
 ```bash
 # Generate self-signed certificates for info.lab.test and app.lab.test
@@ -231,6 +236,16 @@ sudo restorecon -Rv /var/www/info.lab.test /var/www/app.lab.test /var/www/lectur
 sudo httpd -t && sudo systemctl restart php-fpm httpd 
 ```
 
+### Step 7: Configure Client DNS Resolution (`rhel-client`)
+```bash
+sudo systemctl disable --now named 2>/dev/null || true
+sudo nmcli connection modify "enp0s1" ipv4.ignore-auto-dns yes ipv6.ignore-auto-dns yes
+sudo nmcli connection modify "private-net" ipv4.dns "192.168.56.10" ipv4.dns-search "lab.test" ipv4.dns-priority -1
+sudo nmcli connection down "enp0s1" && sudo nmcli connection up "enp0s1"
+sudo nmcli connection down "private-net" && sudo nmcli connection up "private-net"
+cat /etc/resolv.conf
+```
+
 ## 5. Verification Commands (`rhel-client`)
 
 Run all checks from **`rhel-client`** ('192.168.56.20') without `/etc/hosts/` overrides or `--resolve` flags: 
@@ -243,8 +258,8 @@ dig -x 192.168.56.10 +short
 dig -x 192.168.56.20 +short
 
 # 2. Verify Port 80 -> 443 (301 Moved Permanently) Redirects
-curl -I [http://info.lab.test/](http://info.lab.test/)
-curl -I [https://app.lab.test/](https://app.lab.test/)
+curl -I http://info.lab.test/
+curl -I https://app.lab.test/
 
 # 3. Verify Unauthorized (401) vs. Authorized (200) Access on /admin
 curl -k -I  [https://info.lab.test/admin](https://info.lab.test/admin/)
