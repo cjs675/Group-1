@@ -140,7 +140,7 @@ sudo dnf install -y bind-utils curl firefox openssh-clients
 
 ## 4. Server Setup & Deployment (`rhel-server`)
 
-Run Steps 1-6 on **`rhel-server`* (`192.168.56.10`) from the root of the `Group-1` repository, and Step 7 on **`rhel-client`** (`192.168.56.20`).
+Run Steps 1-6 on **`rhel-server`** (`192.168.56.10`) from the root of the `Group-1` repository, and Step 7 on **`rhel-client`** (`192.168.56.20`).
 
 ### Step 1: Enable Core Services & Configure `firewalld`
 ```bash
