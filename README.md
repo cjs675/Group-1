@@ -163,5 +163,29 @@ sudo semanage fcontext -a -t httpd_sys_content_t "/var/www/app\.lab\.test(/.*)?"
 sudo semanage fcontext -a -t httpd_sys_content_t "/var/www/lecture-index(/.*)?"
 sudo restorecon -Rv /var/www/info.lab.test /var/www/app.lab.test /var/www/lecture-index
 
-sudo httpd -t && sudo systemctl restart php-fpm httpd
+sudo httpd -t && sudo systemctl restart php-fpm httpd 
 ```
+
+## 5. Verification Commands (`rhel-client`)
+
+Run these checks from **`rhel-client`** (`192.168.56.20`) (or locally on `rhel-server` by replacing `192.168.56.10` with `127.0.0.1` in `--resolve` before DNS is live):
+
+```bash
+# 1. Verify DNS forward & reverse resolution (once BIND is active)
+dig @192.168.56.10 info.lab.test +short
+dig @192.168.56.10 app.lab.test +short
+dig @192.168.56.10 -x 192.168.56.10 +short
+
+# 2. Verify Port 80 -> 443 (301 Moved Permanently) Redirects
+curl -I --resolve info.lab.test:80:192.168.56.10 http://info.lab.test/
+curl -I --resolve app.lab.test:80:192.168.56.10 http://app.lab.test/
+
+# 3. Verify Unauthorized (401) vs. Authorized (200) Access on /admin
+curl -k -I --resolve info.lab.test:443:192.168.56.10 https://info.lab.test/admin/
+curl -k -I -u admin --resolve info.lab.test:443:192.168.56.10 https://info.lab.test/admin/
+
+# 4. Verify Dynamic PHP Search on app.lab.test
+curl -k --resolve app.lab.test:443:192.168.56.10 "https://app.lab.test/?search=Linux" | grep "Available Lectures"
+```
+
+---
