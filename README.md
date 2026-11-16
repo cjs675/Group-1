@@ -37,7 +37,7 @@ Group-1/
 │   ├── info.lab.test/
 │   └── app.lab.test/
 └── README.md
-
+```
 ---
 
 ## DNS Zone Configuration (`lab.test`)
