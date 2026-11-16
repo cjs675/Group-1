@@ -5,7 +5,7 @@ make sure that bind dns is installed
 Config and zones:
 	Files ending with .zone go into the directory /var/named
 	coursehub-zones.conf goes into /etc/named/
-	replace existing named.conf with the one within (configures bind to allow DNS queries from the private network and creation of zones)
+	replace existing named.conf in /etc with the one within (configures bind to allow DNS queries from the private network and creation of zones)
 
 Permissions:
 	make both zone files are owned by root and have 640 permissions
